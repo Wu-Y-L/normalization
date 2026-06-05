@@ -243,7 +243,7 @@ class BCPFCM(PFCM):
         # Median normalisation: robust to large background / air regions
         nonzero = B[B > 0]
         median = np.median(nonzero) if nonzero.size > 0 else 1.0
-        B /= median + 1e-20
+        B -= median + 1e-20
         return B                                    # (H, W)
  
     def _membership_and_typicalities(self, I_corr_1d, v, gamma):
@@ -269,9 +269,19 @@ class BCPFCM(PFCM):
  
     def _update_bias(self, X_raw_1d, u, v, img_shape):
         """Estimate, smooth, and return the bias field as an (H, W) array."""
-        pred_intensity = (u * v[:, 0]).sum(axis=1)   # (n,)
-        B_raw = X_raw_1d / (pred_intensity + 1e-20)
-        return self._smooth_bias(B_raw, img_shape)    # (H, W)
+
+        log_x = np.log(X_raw_1d + 1e-20)
+        log_pred = np.log(((u*v[:, 0]).sum(axis=1)) + 1e-20)
+        log_b_raw = log_x - log_pred 
+        log_b = self._smooth_bias(log_b_raw, img_shape)
+        
+        b = np.exp(log_b)
+
+        return b 
+
+        # pred_intensity = (u * v[:, 0]).sum(axis=1)   # (n,)
+        # B_raw = X_raw_1d / (pred_intensity + 1e-20)
+        # return self._smooth_bias(B_raw, img_shape)    # (H, W)
  
     # ------------------------------------------------------------------
     # Fitting
